@@ -1,0 +1,346 @@
+\documentclass[journal, onecolumn, draftclsnofoot]{IEEEtran}
+
+\newcommand{\classnum}{ENEE 4710-40522}					% Class Number Designation
+\newcommand{\doctype}{Embedded}							% Assignment Type
+\newcommand{\instructor}{Dr. JW Bruce}					% Instructor
+\newcommand{\classname}{Embedded Systems\\ \classnum}	% Name of class
+\newcommand{\atitle}{HW3: ARM Assembly Syntax}			% Name of assignment
+\newcommand{\submissiondate}{\today}					% Submission Date (compilation day is default)
+
+\input{/home/ddickhut/Templates/LaTeX/preamble.tex}
+\input{/home/ddickhut/Templates/LaTeX/arm_assembly_def.tex}
+
+
+\begin{document}
+	
+	% =================================================================
+	%                             COVER PAGE
+	% =================================================================
+	
+	\begin{titlepage}
+		\thispagestyle{empty}
+		\centering
+		
+		
+		\vspace{1in} % Reduced space
+		
+		% Class Information
+		{\Huge \textbf{\classname}}
+		
+		\vspace{0.5in} % Reduced space
+		\hrule
+		\vspace{3mm}
+		{\huge \textit{\atitle}}
+		\vspace{3mm}
+		\hrule
+		
+		\vspace{1.75in} % Reduced space
+		
+		% Authors
+		{\Large\studentA} 
+		
+		\vspace{1.75in} % Reduced space
+	
+		\begin{minipage}{0.6\textwidth}
+			\centering
+			\large % Set font size to large for the table content
+			\begin{tabular}{r l}
+				\textbf{Instructor:} & \instructor \\
+				\textbf{Submission Date:} & \submissiondate \\
+				\vspace{1.5in}
+			\end{tabular}
+			
+			\textit{\universitydept}
+		\end{minipage}
+		
+		\vfill
+		
+		
+	\end{titlepage}
+	
+	% =================================================================
+	%                               ABSTRACT
+	% =================================================================
+	
+	%\begin{abstract}
+	%	T
+	%\end{abstract}
+	
+	
+	% =================================================================
+	%                               TOC PAGE
+	% =================================================================
+	
+	\cleardoublepage
+	\tableofcontents
+	\thispagestyle{fancy} % Apply the simple page numbering style
+	\cleardoublepage % Start the main content on a fresh page
+	
+	% =================================================================
+	%                             MAIN BODY
+	% =================================================================
+	
+	\begin{center}
+			Introduction
+	\end{center}
+	
+	Assembly language is a human-readable representation of machine code. Every architecture has its own opcodes and allowable operands, and thus has its own version of Assembly language. As many embedded application use chips with ARM cores, ARM assembly is a particularly useful language for embedded systems engineers. What follows is an exploration of basic commands and appropriate syntax targeting an emulated ARMv7/Cortex-A9 32-bit CPU.
+	
+	\section{Three-Register Format}
+	
+	To begin, basic operations using three-register syntax will be presented. While this segment preceeds the section dealing with loading values to registers, by necessity it must include these commands. 
+	
+	\subsection{\texttt{ADD} and \texttt{ADDS}}
+	Basic addition commands will be the first demonstrated. This section begins with the trivial case of adding one to one, then adds two large numbers using the \texttt{ADDS} command to demonstrate setting condition bits. The -S suffix denotes that appropriate condition flags will be set in the CPSR register, but the functions are otherwise identical. It should be noted here that, while all demonstration programs in this report begin by zeroing-out all relevant registers, that code section will be skipped in all following examples.
+	
+	\begin{lstlisting}
+	MOV r0, #0				@ Zero-Out all used registers
+	MOV r1, #0				@ 	~~
+	MOV r2, #0				@ 	~~
+	MOV r3, #0				@ 	~~
+	MOV r4, #0				@ 	~~
+	MOV r5, #0 				@ Zero-Out all used registers
+	
+	MOV r0, #1				@ Load 1 into r0
+	MOV r1, #1				@ Load 1 into r1
+	MOV r3, #0x70000000		@ Load Large, Positive, 2'C Number into r3
+	MOV r4, #0x7FFFFFFF		@ Load Another Large, Positive, 2'C Number into r4
+	
+	ADD r2, r0, r1			@ Add r0 and r1, load value into r2: 1 + 1 = 2
+	
+	ADDS r5, r3, r4			@ Add r3 and r4 into r5. This will cause an overflow, setting the condition bits 'N' and 'V'
+	\end{lstlisting}
+	
+	\subsection{\texttt{SUB} and \texttt{SUBS}}
+	The demonstration of subtraction also begins with a trivial example, then runs through three cases of condition bit setting.
+	
+	\begin{lstlisting}
+	MOV r1, #1					@ Load 1 into r1
+	MOV r2, #2					@ Load 2 into r2
+	
+	SUB r5, r1, r2				@ Subtracting 1 from 2. Operation does not set 'NOT BORROW' bit, despite there being no borrow involved
+	
+	SUBS r5, r0, r2				@ Subtracting 2 from 0 will set the 'N' bit and clear the 'NOT BORROW' bit
+	
+	SUBS r7, r1, r1				@ Subtracting two identical numbers will set the zero conditional bit
+	SUBS r4, r1, r0				@ Subtracting 0 from 1 will set the NOT BORROW bit
+	\end{lstlisting}
+	
+	\subsection{\texttt{AND(S)} and \texttt{EOR(S)}}
+	
+	To demonstrate these two bitwise logical operations, the two hex numbers \texttt{0x66666666} and \texttt{0x99999999} were chosen as they are bitwise inverses of each other. This property allows an exceedingly clean demonstration of these two functions.
+	
+	\begin{lstlisting}
+	MOV r0, #0x6666			@ Put indicated bit pattern into bottom 2 bytes of r0
+	MOVT r0, #0x6666		@ Put indicated bit pattern into top 2 bytes of r0
+	MOV r1, #0x9999			@ Put indicated bit pattern into bottom 2 bytes of r1
+	MOVT r1, #0x9999		@ Put indicated bit pattern into top 2 bytes of r1
+	
+	AND r2, r1, r0			@ AND-ing these two numbers will find the locations where there is a bit set by each number (no bit locations shared: all unset)
+	
+	EOR r3, r1, r0			@ EOR-ing these two numbers will find the locations where there is a bit set by one number (no bit locations shared: all set)
+	
+	@ Setting all bits in r2 and unsetting all bits in r3 creates another convenient pair of constants for the following demo
+	
+	ANDS r4, r2, r3			@ Running this command in the 'SET' configuration will set Z bit
+	
+	EORS r4, r2, r3			@ Running this command in the 'SET' configuration will set N bit
+	\end{lstlisting}
+	
+	\section{Register with Immediate Constant}
+	
+	This is very similar to the previous section, with the distinction that an immediate literal is used as the third argument.
+	
+	\subsection{\texttt{ADD} and \texttt{ADDS}}
+	This section once again begins with the trivial case of adding one to one, then adds two large numbers using the \texttt{ADDS} command to demonstrate setting condition bits.
+	
+	\begin{lstlisting}
+	MOV r0, #1					@ Load 1 into r0
+	MOV r3, #0x70000000			@ Load Large, Positive, 2'C Number into r3
+	
+	ADD r2, r0, #1				@ Add 1 to r0, load value into r2: 1 + 1 = 2
+	
+	ADDS r5, r3, #0x7FFFFFFF	@ Add r3 and 2^31-1 into r5. This will cause an overflow, setting the condition bits 'N' and 'V'
+	\end{lstlisting}
+	
+	\subsection{\texttt{SUB} and \texttt{SUBS}}
+	The demonstration of subtraction also begins with a trivial example, then runs through three cases of condition bit setting.
+	
+	\begin{lstlisting}
+	SUBS r7, r1, #1				@ Subtracting two identical numbers will set the zero conditional bit
+	
+	SUB r5, r1, #2				@ Subtracting 2 from 1 will not change CARRY bit
+	
+	SUBS r5, r0, #2				@ Subtracting 2 from 0 will set N, unset C bit
+	
+	SUBS r4, r1, #0				@ Subtracting 0 from 1 will set the NOT BORROW bit
+	\end{lstlisting}
+	
+	\subsection{\texttt{AND(S)} and \texttt{EOR(S)}}
+	
+	To demonstrate these two bitwise logical operations, the two hex numbers \texttt{0x666} and \texttt{0x999} were chosen as their 12 LSb's are bitwise inverses of each other. A direct 1-to-1 equivalency with the previous section was not possible as direct constants are encoded as 8-bit values.
+	
+	\begin{lstlisting}
+	MOV r1, #0x99				@ Initial value to compare to 0x66
+	MVN r3, #0					@ Fill r3 with ones (Unsets, then inverts all bits in register)
+	
+	AND r4, r1, #0x66			@ AND-ing these two numbers will find the locations where there is a bit set by each number (bottom byte of r4 unset)
+	
+	EOR r5, r1, #0x66			@ EOR-ing these two numbers will find the locations where there is a bit set by one number (bottom byte of r5 set)
+	
+	ANDS r4, r3, #0				@ Running this command in the 'SET' configuration will set Z bit
+	
+	EORS r4, r3, #0				@ Running this command in the 'SET' configuration will set N bit
+	\end{lstlisting}
+	
+	
+	
+	\begin{lstlisting}
+	@ Part D: Post-Indexed Addressing
+
+	MOV r0, #0			@ Zero-Out all used registers
+	MOV r1, #0			@ ~~
+	MOV r2, #0			@ Zero-Out all used registers
+	
+	MOV r3, #0xBEEF		@ Data to overwrite in final operation
+
+	MOV r1, #0x5678		@ Information to store in bottom 2 memory bytes
+	MOVT r1 #0x1234		@ Information to store in top 2 memory bytes
+
+	STR r0, [r0], #8	@ STORE r0 at r0[k] addressed memory. r0[k+1] = r0[k] + 8
+	STR r1, [r0]		@ STORE r1 to r0[k+1] addressed memory
+	LDR r2, [r0]		@ READ previously written data (r1), store in r2
+	LDR r3, [#0]		@ r0[k]'th memory location has #0x0 stored
+	\end{lstlisting}
+	
+	%\bibliographystyle{IEEEtran}
+	%\bibliography{refs}
+	%\appendices{}
+	
+	\section{Two-Register/Move Operations}
+	This command was used extensively in the previous two sections, so little additional context is needed. This section simply addresses the ability to set condition flags and move information \emph{between} registers.
+	
+	\begin{lstlisting}
+	MOV r0, #0x6666			@ Put bit pattern 011001100110 into BOTTOM two bytes of r0
+	MVT r0, #0x6666			@ Put bit pattern 011001100110 into TOP two bytes of r0
+	MOVS r1, r2				@ Put #0x0 from register two into register one, setting zero bit
+	MVN r3, #0				@ Fill r3 with ones (Unsets, then inverts all bits in register)
+	MVNS r1, #0				@ Fill r1 with ones and set negative bit
+	\end{lstlisting}
+	\section{Flexible Second Operand}
+	
+	This section introduces the concept of inline bit-shifting operations. This technique allows two mathematical or logical operations (from a limited subset) to be performed in the same clock cycle. To demonstrate this, various operations were performed with both the "modify" and "not-modify" versions of common commands
+	
+	\begin{lstlisting}
+	MOV r0, #3					@ Put 3 into register 0
+	MOV r1, #3					@ Put 3 into register 1
+
+	ADD r2, r1, r0, LSL #3		@ Add 3 and 3, shift result 3 bits leftward
+
+	ADDS r3, r1, r0, LSL #30	@ Move a 1 to MSb location, setting N flag
+	
+	SUB r4, r3, r2, ASR #4 		@ Subtract large number from small number, arithmetic shift right 3 positions@ 1 remains in MSb, N bit not set
+
+	SUBS r5, r3, r2, ASR #4 	@ Subtract large number from small number, arithmetic shift right 3 positions@ 1 remains in MSb, N and NOT CARRY bits set
+	
+	ORR r6, r3, r4, ROR #2		@ Finds all locations where r3 or r4 have a bit, roll result 2 locations Right
+	ORRS r7, r3, r4, ROR #2		@ Finds all locations where r3 or r4 have a bit, roll result 2 locations Right, sets negative bit
+	\end{lstlisting}
+
+	
+	\section{Flag Setting/Comparison Operations}
+	
+	This class of operation allows the conditional information from a logical or mathematical operation to be encoded in the \texttt{cpsr} register, when the actual result is not needed.
+
+	\begin{lstlisting}
+	MOV r0, #3				@ Put 3 into register 0
+	MOV r1, #3				@ Put 3 into register 1
+
+	CMP r0, r1				@ Computes 3-3, sets Z flag and 'NOT BORROW' flag, as op requires no borrow
+	CMP r0, #4				@ Computes 3-4 sets N flag, unsets C flag
+
+	TST r0, #3				@ Computes 3 AND 3, clears Z flag as result is true
+	
+	TEQ r0, #3				@ Computes 3 XOR 3, sets Z flag due to equivalence
+	\end{lstlisting}
+	
+	\section{Memory Addressing Formats}
+
+	Addressed memory is a fundamental feature of modern digital computers. The ARM architecture has multiple methods of addressing memory for read- and write operations, covering a variety of different contexts.
+	
+	\subsection{Register Offset}
+	In register offset addressing, the value stored in a register is used to offset the memory location encoded in the second operand. To demonstrate this functionality, a value was stored in the 32-bit memory location beginning at $0x00000+4$, then read to another register.
+	
+	\begin{lstlisting}
+	MOV r0, #0			@ Base Location
+	MOV r1, #4			@ For jump
+	MOV r2, #0x00001234		@ Information to store
+
+	STR r2, [r0, r1]	@ STORE r2 in r0+r1 memory location
+	LDR r3, [r0, r1]	@ READ previously written data to r3
+	\end{lstlisting}
+	
+	\subsection{Immediate Offset}
+	In imediate offset addressing, the memory address stored in a register is offset by an immediate constant. To demonstrate this functionality, a value was stored in the 32-bit memory location beginning at $0x000000 + 8$, then read to another register.
+	
+	\begin{lstlisting}
+	MOV r0, #0			@ Base Location
+	MOV r1, #0x00001234	@ Data to be written
+                
+	STR r1, [r0, #8]	@ Store data from r1 in r0+8 memory location
+	LDR r2, [r0, #8]	@ Read previously written data in r0+8, store in r2
+	\end{lstlisting}
+
+	\subsection{Writeback Addressing}
+	
+	This addressing syntax updates a memory address in a register by a specific offset, and accesses the memory at the updated value.
+	
+	\begin{lstlisting}
+	MOV r1, #0x00001234 @ Information to store
+
+	STR r1, [r0, #8]!	@ STORE r1 to r0+8 memory location. Update r0 to r0+8
+	LDR r2, [r0]		@ READ previously written data, store in r2
+	\end{lstlisting}
+	
+	\subsection{Post-Indexed Addressing}
+	
+	This addressing syntax accesses memory at an address specified by a value stored in a register ($rx[k]$), then updates that value by a specified offset: $rx[k+1]=rx[k]+C$.
+	
+	\begin{lstlisting}
+	MOV r0, #0
+	MOV r1, #0x5678		@ Information to store in bottom 2 memory bytes
+	MOVT r1 #0x1234		@ Information to store in top 2 memory bytes
+	MOV r3, #0xBEEF		@ Data to overwrite in final operation
+	
+	STR r0, [r0], #8	@ STORE r0 at r0[k] addressed memory. r0[k+1] = r0[k] + 8
+	STR r1, [r0]		@ STORE r1 to r0[k+1] addressed memory
+	LDR r2, [r0]		@ READ previously written data (r1), store in r2
+	LDR r3, [#0]		@ r0[k]'th memory location has #0x0 stored
+	\end{lstlisting}
+	
+	\subsection{Scaled Register Offset}
+	
+	This addressing syntax accesses memory at an address specified by a value stored in a register, with an offset scaled by $2^{n}$. The base address is not updated in this instance, except where modified by $!$.
+	
+	\begin{lstlisting}	
+	MOV r1, #1				@ Offset to be scaled
+	
+	MOV r2, #0x5678			@ Information to store in bottom 2 memory bytes
+	MOVT r2 #0x1234			@ Information to store in top 2 memory bytes
+	
+	@ Store information from r2 to memory location 0x0 + r1*2^2=0x4:
+	STR r2, [r0, r1, LSL #2] 
+	
+	@ Using immediate offset addressing to confirm that the data was written to the correct address
+	LDR r3, [r0, #4]
+	
+	@ Zero-Out r3
+	MOV r3, #0
+	
+	@ Using Scaled Register Offset addressing to confirm that syntax works for both load and store operations, while also demonstrating writeback functionality
+	LDR r3, [r0, r1, LSL #2]!
+	
+	@ Demonstrate that address register was updated
+	LDR r4, [r0]
+	\end{lstlisting}
+\end{document}
